@@ -3,93 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TubeStudy AI | No-Key Study Tool</title>
-    <!-- Use Puter.js to include the AI brain directly in the code -->
+    <title>TubeStudy AI | v3 Reliable</title>
     <script src="https://puter.com"></script>
     <script src="https://tailwindcss.com"></script>
     <script src="https://unpkg.com"></script>
-    <link href="https://googleapis.com" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #fdfdfd; }
-        .flashcard { perspective: 1000px; height: 180px; cursor: pointer; }
-        .flashcard-inner { transition: transform 0.4s; transform-style: preserve-3d; position: relative; height: 100%; width: 100%; }
+        .flashcard { perspective: 1000px; min-height: 200px; }
+        .flashcard-inner { transition: transform 0.5s; transform-style: preserve-3d; position: relative; height: 100%; width: 100%; }
         .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
-        .front, .back { backface-visibility: hidden; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; text-align: center; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
-        .back { transform: rotateY(180deg); background: #3b82f6; color: white; border: none; }
+        .front, .back { backface-visibility: hidden; position: absolute; inset: 0; padding: 1.5rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .front { background: white; border: 2px solid #e2e8f0; }
+        .back { transform: rotateY(180deg); background: #2563eb; color: white; }
     </style>
 </head>
-<body class="min-h-screen pb-20">
+<body class="bg-slate-50 min-h-screen pb-20 font-sans text-slate-900">
 
-    <nav class="border-b px-6 py-4 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <div class="flex items-center gap-2">
-            <div class="bg-blue-600 p-1.5 rounded text-white"><i data-lucide="brain"></i></div>
-            <span class="text-xl font-bold">TubeStudy <span class="text-blue-600">Local</span></span>
-        </div>
+    <nav class="bg-white border-b px-6 py-4 flex items-center gap-2 sticky top-0 z-50">
+        <div class="bg-blue-600 p-1.5 rounded text-white"><i data-lucide="graduation-cap" class="w-5 h-5"></i></div>
+        <span class="text-xl font-bold">TubeStudy AI</span>
     </nav>
 
-    <main class="max-w-4xl mx-auto px-6 mt-12">
-        <div class="text-center mb-10">
-            <h1 class="text-3xl font-bold mb-2">Build Your Study Deck</h1>
-            <p class="text-slate-500">Paste any YouTube link. No API key or account needed.</p>
-        </div>
-
-        <div class="flex flex-col md:flex-row gap-2 bg-white p-2 rounded-2xl border shadow-lg mb-16">
-            <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." class="flex-1 p-4 outline-none text-lg">
+    <main class="max-w-4xl mx-auto px-6 pt-12">
+        <div class="bg-white p-4 rounded-2xl shadow-xl border flex flex-col md:flex-row gap-3 mb-12">
+            <input id="ytUrl" type="text" placeholder="Paste YouTube link here..." class="flex-1 p-4 outline-none text-lg rounded-xl bg-slate-50">
             <button onclick="processVideo()" id="generateBtn" class="bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                Analyze Video <i data-lucide="sparkles" class="w-4 h-4"></i>
+                Analyze <i data-lucide="zap" class="w-4 h-4"></i>
             </button>
         </div>
 
-        <!-- Progress Spinner -->
-        <div id="loading" class="hidden py-10 text-center">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-4"></div>
-            <p class="font-medium text-slate-600 italic">Extracting transcript and generating cards...</p>
+        <div id="loading" class="hidden text-center py-10">
+            <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+            <p class="font-medium text-slate-600">Reading video transcript... this takes 10-20 seconds.</p>
         </div>
 
-        <!-- Generated Study Content -->
-        <div id="output" class="hidden space-y-16">
+        <div id="output" class="hidden space-y-12">
             <div id="flashcardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-            <div class="bg-slate-900 rounded-3xl p-8 text-white shadow-xl">
-                <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="clipboard-list"></i> Practice Quiz</h3>
+            <div class="bg-slate-900 rounded-3xl p-8 text-white shadow-2xl">
+                <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="clipboard-check" class="text-blue-400"></i> Practice Quiz</h3>
                 <div id="testArea" class="space-y-8"></div>
             </div>
         </div>
     </main>
 
     <script>
+        lucide.createIcons();
+
         async function processVideo() {
             const url = document.getElementById('ytUrl').value;
             const btn = document.getElementById('generateBtn');
             const loading = document.getElementById('loading');
             const output = document.getElementById('output');
 
-            if (!url) return alert("Please paste a YouTube URL first!");
+            if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+                return alert("Please paste a valid YouTube link.");
+            }
 
             btn.disabled = true;
             loading.classList.remove('hidden');
             output.classList.add('hidden');
 
             try {
-                // 1. Get YouTube Transcript (using a free proxy)
-                const videoId = url.split('v=')[1]?.split('&')[0];
-                if(!videoId) throw new Error("Invalid URL");
+                // Get Video ID
+                const vid = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop();
                 
-                const transcriptRes = await fetch(`https://vercel.app{videoId}`);
-                const transcriptData = await transcriptRes.json();
-                const text = transcriptData.transcript.map(t => t.text).join(' ').substring(0, 4000);
+                // Fetch Transcript - Using a more stable mirror
+                const res = await fetch(`https://vercel.app{vid}`);
+                if (!res.ok) throw new Error("Transcript not available for this video.");
+                
+                const data = await res.json();
+                const text = data.transcript.map(t => t.text).join(' ').substring(0, 4000);
 
-                // 2. Use the Puter.js "Internal Brain" to generate the content
-                // This call uses Puter's cloud AI credits automatically
-                const prompt = `Based on this video transcript, create 4 flashcards and 2 quiz questions.
-                Text: ${text}
-                Return ONLY a JSON object: {"cards": [{"q": "...", "a": "..."}], "test": [{"q": "...", "options": ["A", "B", "C", "D"], "correct": "..."}]}`;
+                // Use Puter.js AI with gpt-4o-mini (latest)
+                const prompt = `Based on this text, create exactly 4 flashcards and 2 quiz questions. Return ONLY a JSON object: 
+                {"cards": [{"q": "Question", "a": "Answer"}], "test": [{"q": "Question", "options": ["A", "B", "C", "D"], "correct": "CorrectChoice"}]}
+                Text: ${text}`;
 
-                const response = await puter.ai.chat(prompt);
-                const data = JSON.parse(response.message.content.replace(/```json|```/g, "").trim());
+                const aiResponse = await puter.ai.chat(prompt, { model: 'gpt-4o-mini' });
+                const cleanJson = aiResponse.message.content.replace(/```json|```/g, "").trim();
+                const studyData = JSON.parse(cleanJson);
 
-                renderUI(data);
+                renderContent(studyData);
             } catch (err) {
-                alert("Could not process this video. Try one with public subtitles!");
+                console.error(err);
+                alert("Processing Failed! Check if the video is Public and has Captions (CC) enabled.");
             } finally {
                 btn.disabled = false;
                 loading.classList.add('hidden');
@@ -97,26 +93,26 @@
             }
         }
 
-        function renderUI(data) {
+        function renderContent(data) {
             const grid = document.getElementById('flashcardsGrid');
-            const test = document.getElementById('testArea');
-            
+            const area = document.getElementById('testArea');
+
             grid.innerHTML = data.cards.map(c => `
                 <div class="flashcard" onclick="this.classList.toggle('flipped')">
                     <div class="flashcard-inner">
-                        <div class="front bg-white p-6 font-semibold">${c.q}</div>
-                        <div class="back p-6 text-sm">${c.a}</div>
+                        <div class="front shadow-sm font-semibold">${c.q}</div>
+                        <div class="back text-sm font-medium px-4">${c.a}</div>
                     </div>
                 </div>
             `).join('');
 
-            test.innerHTML = data.test.map((t, i) => `
+            area.innerHTML = data.test.map((t, i) => `
                 <div>
                     <p class="text-lg mb-4 text-slate-300 font-medium">${i+1}. ${t.q}</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         ${t.options.map(opt => `
                             <button onclick="checkAnswer(this, '${opt}', '${t.correct}')" 
-                                class="text-left p-3 rounded-lg border border-slate-700 bg-slate-800/40 hover:bg-slate-700 transition">
+                                class="text-left p-4 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-700 transition text-slate-200">
                                 ${opt}
                             </button>
                         `).join('')}
@@ -128,14 +124,10 @@
         }
 
         function checkAnswer(btn, pick, correct) {
-            if(pick === correct) {
-                btn.className = "text-left p-3 rounded-lg border border-green-500 bg-green-500/20 text-green-400";
-            } else {
-                btn.className = "text-left p-3 rounded-lg border border-red-500 bg-red-500/20 text-red-400";
-            }
+            btn.className = pick === correct 
+                ? "text-left p-4 rounded-xl border border-green-500 bg-green-500/20 text-green-400"
+                : "text-left p-4 rounded-xl border border-red-500 bg-red-500/20 text-red-400";
         }
-
-        lucide.createIcons();
     </script>
 </body>
 </html>
