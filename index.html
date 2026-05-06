@@ -1,236 +1,132 @@
-import { useEffect, useMemo, useState } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TubeStudy - Free Video Flashcards</title>
+    <!-- Puter.js provides the AI brain for free -->
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
 
-// ===============================
-// Study Flashcards App (Advanced)
-// - YouTube video library
-// - Flashcard system
-// - Quiz mode
-// - Simple spaced repetition (Leitner boxes)
-// - Local storage persistence
-// ===============================
+    <nav class="bg-white border-b p-4 text-center">
+        <h1 class="text-2xl font-bold text-blue-600">TubeStudy</h1>
+    </nav>
 
-export default function StudyApp() {
-  const [url, setUrl] = useState("");
-  const [videos, setVideos] = useState([]);
-  const [cards, setCards] = useState([]);
-
-  const [mode, setMode] = useState("study"); // study | quiz | add
-  const [index, setIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
-
-  const [score, setScore] = useState(0);
-  const [quizTotal, setQuizTotal] = useState(0);
-
-  // ===============================
-  // Persistence
-  // ===============================
-  useEffect(() => {
-    const saved = localStorage.getItem("study-app");
-    if (saved) {
-      const data = JSON.parse(saved);
-      setVideos(data.videos || []);
-      setCards(data.cards || []);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "study-app",
-      JSON.stringify({ videos, cards })
-    );
-  }, [videos, cards]);
-
-  // ===============================
-  // Helpers
-  // ===============================
-  function extractVideoId(link) {
-    try {
-      const u = new URL(link);
-      if (u.hostname.includes("youtube.com")) return u.searchParams.get("v");
-      if (u.hostname.includes("youtu.be")) return u.pathname.slice(1);
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  function generateFlashcards(videoId) {
-    // Placeholder "smart" generation (can be replaced with AI later)
-    return [
-      {
-        id: crypto.randomUUID(),
-        q: "What is the main idea of this video?",
-        a: "Summarize key concept from the lecture",
-        box: 1,
-        nextReview: Date.now(),
-        videoId
-      },
-      {
-        id: crypto.randomUUID(),
-        q: "What are 3 important points?",
-        a: "Break the content into key ideas",
-        box: 1,
-        nextReview: Date.now(),
-        videoId
-      },
-      {
-        id: crypto.randomUUID(),
-        q: "How would you apply this in real life?",
-        a: "Think practical use cases",
-        box: 1,
-        nextReview: Date.now(),
-        videoId
-      }
-    ];
-  }
-
-  function addVideo() {
-    const id = extractVideoId(url);
-    if (!id) return;
-
-    if (videos.find(v => v.id === id)) return;
-
-    const newVideo = { id, url };
-    const newCards = generateFlashcards(id);
-
-    setVideos([...videos, newVideo]);
-    setCards([...cards, ...newCards]);
-
-    setUrl("");
-  }
-
-  // ===============================
-  // Spaced repetition update
-  // ===============================
-  function gradeCard(card, correct) {
-    let newBox = card.box;
-
-    if (correct) {
-      newBox = Math.min(card.box + 1, 5);
-    } else {
-      newBox = 1;
-    }
-
-    const delay = [0, 1, 5, 10, 24, 72]; // hours
-
-    return {
-      ...card,
-      box: newBox,
-      nextReview: Date.now() + delay[newBox] * 3600000
-    };
-  }
-
-  // ===============================
-  // Quiz system
-  // ===============================
-  function startQuiz() {
-    setMode("quiz");
-    setIndex(0);
-    setScore(0);
-    setQuizTotal(cards.length);
-  }
-
-  function answer(correct) {
-    const updated = [...cards];
-    updated[index] = gradeCard(updated[index], correct);
-    setCards(updated);
-
-    if (correct) setScore(score + 1);
-
-    setIndex((i) => (i + 1) % cards.length);
-    setShowAnswer(false);
-  }
-
-  const currentCard = cards[index];
-
-  // ===============================
-  // UI
-  // ===============================
-  return (
-    <div style={{ fontFamily: "Arial", padding: 20, maxWidth: 900, margin: "auto" }}>
-      <h1>📚 Smart Study Flashcards</h1>
-
-      {/* Navigation */}
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setMode("study")}>Study</button>
-        <button onClick={() => setMode("add")}>Add Videos</button>
-        <button onClick={startQuiz}>Quiz Mode</button>
-      </div>
-
-      {/* ADD MODE */}
-      {mode === "add" && (
-        <div>
-          <input
-            style={{ width: "70%", padding: 10 }}
-            placeholder="Paste YouTube link..."
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <button onClick={addVideo} style={{ marginLeft: 10 }}>
-            Add
-          </button>
+    <main class="max-w-4xl mx-auto p-6">
+        <div class="bg-white p-8 rounded-xl shadow-sm border mb-8">
+            <h2 class="text-xl font-semibold mb-4">1. Paste YouTube Link</h2>
+            <p class="text-sm text-gray-500 mb-4">No API key required. We use Puter AI to generate your study materials.</p>
+            <div class="flex gap-2">
+                <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." 
+                       class="flex-1 border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <button onclick="processVideo()" id="generateBtn" 
+                        class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                    Create Study Guide
+                </button>
+            </div>
         </div>
-      )}
 
-      {/* VIDEOS */}
-      <h2>Videos</h2>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {videos.map((v) => (
-          <iframe
-            key={v.id}
-            width="250"
-            height="140"
-            src={`https://www.youtube.com/embed/${v.id}`}
-            allowFullScreen
-          />
-        ))}
-      </div>
-
-      <hr />
-
-      {/* STUDY MODE */}
-      {mode === "study" && currentCard && (
-        <div>
-          <h2>Flashcards</h2>
-          <div style={{ border: "1px solid #ccc", padding: 20 }}>
-            <h3>{currentCard.q}</h3>
-            {showAnswer && <p>{currentCard.a}</p>}
-          </div>
-
-          <button onClick={() => setShowAnswer(!showAnswer)}>
-            {showAnswer ? "Hide" : "Show"}
-          </button>
-
-          <button onClick={() => setIndex((index + 1) % cards.length)}>
-            Next
-          </button>
+        <div id="loading" class="hidden text-center py-10">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-4 text-gray-600 italic">Reading video transcript and generating cards...</p>
         </div>
-      )}
 
-      {/* QUIZ MODE */}
-      {mode === "quiz" && currentCard && (
-        <div>
-          <h2>Quiz Mode</h2>
-          <h3>{currentCard.q}</h3>
-
-          {showAnswer && <p>{currentCard.a}</p>}
-
-          <button onClick={() => setShowAnswer(!showAnswer)}>
-            Reveal Answer
-          </button>
-
-          <div style={{ marginTop: 10 }}>
-            <button onClick={() => answer(true)}>Correct</button>
-            <button onClick={() => answer(false)}>Wrong</button>
-          </div>
-
-          <p>
-            Score: {score}/{quizTotal}
-          </p>
+        <div id="output" class="hidden space-y-8">
+            <section>
+                <h2 class="text-2xl font-bold mb-4">Flashcards</h2>
+                <div id="flashcardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+            
+            <section>
+                <h2 class="text-2xl font-bold mb-4">Quick Test</h2>
+                <div id="testArea" class="space-y-4 bg-white p-6 rounded-xl border"></div>
+            </section>
         </div>
-      )}
+    </main>
 
-      {cards.length === 0 && <p>No flashcards yet. Add a video to begin.</p>}
-    </div>
-  );
-}
+    <script>
+        async function processVideo() {
+            const url = document.getElementById('ytUrl').value;
+            const btn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            const output = document.getElementById('output');
+
+            if (!url) return alert("Please enter a YouTube URL");
+
+            btn.disabled = true;
+            loading.classList.remove('hidden');
+            output.classList.add('hidden');
+
+            try {
+                // Step 1: Extract Video ID
+                const videoId = url.split('v=')[1]?.split('&')[0];
+                if(!videoId) throw new Error("Invalid URL");
+
+                // Step 2: Fetch Transcript via Proxy
+                const transcriptRes = await fetch(`https://vercel.app{videoId}`);
+                const transcriptData = await transcriptRes.json();
+                const fullText = transcriptData.transcript.map(t => t.text).join(' ').substring(0, 3000);
+
+                // Step 3: Use Puter.js AI Brain
+                const prompt = `Based on this text, create 4 flashcards and 2 quiz questions.
+                Return ONLY a JSON object exactly like this:
+                { 
+                  "cards": [{"q": "Question here", "a": "Answer here"}], 
+                  "test": [{"q": "Question here", "options": ["Choice1", "Choice2", "Choice3", "Choice4"], "correct": "Choice1"}] 
+                }
+                
+                Text: ${fullText}`;
+                
+                const response = await puter.ai.chat(prompt);
+                
+                // Clean the response in case AI includes backticks
+                const cleanJson = response.message.content.replace(/```json|```/g, "").trim();
+                const studyData = JSON.parse(cleanJson);
+
+                renderResults(studyData);
+            } catch (err) {
+                console.error(err);
+                alert("Error! This usually happens if the video has captions disabled or the AI is busy.");
+            } finally {
+                btn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+
+        function renderResults(data) {
+            const flashcardGrid = document.getElementById('flashcardsGrid');
+            const testArea = document.getElementById('testArea');
+            const output = document.getElementById('output');
+
+            flashcardGrid.innerHTML = data.cards.map(card => `
+                <div class="bg-white p-6 rounded-xl border shadow-sm cursor-pointer hover:border-blue-400 transition" onclick="this.querySelector('.ans').classList.toggle('hidden')">
+                    <p class="font-bold text-sm text-blue-600 mb-2 uppercase">Question</p>
+                    <p class="text-lg mb-4">${card.q}</p>
+                    <div class="ans hidden border-t pt-4">
+                        <p class="font-bold text-sm text-green-600 mb-1 uppercase">Answer</p>
+                        <p>${card.a}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            testArea.innerHTML = data.test.map((item, idx) => `
+                <div class="p-4 border-b last:border-0">
+                    <p class="font-bold mb-3">${idx+1}. ${item.q}</p>
+                    <div class="grid grid-cols-1 gap-2">
+                        ${item.options.map(opt => `
+                            <button onclick="this.style.background = '${opt === item.correct ? '#dcfce7' : '#fee2e2'}'" 
+                                    class="text-left p-2 border rounded hover:bg-gray-50 transition">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            output.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
