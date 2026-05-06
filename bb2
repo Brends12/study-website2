@@ -1,0 +1,236 @@
+import { useEffect, useMemo, useState } from "react";
+
+// ===============================
+// Study Flashcards App (Advanced)
+// - YouTube video library
+// - Flashcard system
+// - Quiz mode
+// - Simple spaced repetition (Leitner boxes)
+// - Local storage persistence
+// ===============================
+
+export default function StudyApp() {
+  const [url, setUrl] = useState("");
+  const [videos, setVideos] = useState([]);
+  const [cards, setCards] = useState([]);
+
+  const [mode, setMode] = useState("study"); // study | quiz | add
+  const [index, setIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+
+  const [score, setScore] = useState(0);
+  const [quizTotal, setQuizTotal] = useState(0);
+
+  // ===============================
+  // Persistence
+  // ===============================
+  useEffect(() => {
+    const saved = localStorage.getItem("study-app");
+    if (saved) {
+      const data = JSON.parse(saved);
+      setVideos(data.videos || []);
+      setCards(data.cards || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "study-app",
+      JSON.stringify({ videos, cards })
+    );
+  }, [videos, cards]);
+
+  // ===============================
+  // Helpers
+  // ===============================
+  function extractVideoId(link) {
+    try {
+      const u = new URL(link);
+      if (u.hostname.includes("youtube.com")) return u.searchParams.get("v");
+      if (u.hostname.includes("youtu.be")) return u.pathname.slice(1);
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  function generateFlashcards(videoId) {
+    // Placeholder "smart" generation (can be replaced with AI later)
+    return [
+      {
+        id: crypto.randomUUID(),
+        q: "What is the main idea of this video?",
+        a: "Summarize key concept from the lecture",
+        box: 1,
+        nextReview: Date.now(),
+        videoId
+      },
+      {
+        id: crypto.randomUUID(),
+        q: "What are 3 important points?",
+        a: "Break the content into key ideas",
+        box: 1,
+        nextReview: Date.now(),
+        videoId
+      },
+      {
+        id: crypto.randomUUID(),
+        q: "How would you apply this in real life?",
+        a: "Think practical use cases",
+        box: 1,
+        nextReview: Date.now(),
+        videoId
+      }
+    ];
+  }
+
+  function addVideo() {
+    const id = extractVideoId(url);
+    if (!id) return;
+
+    if (videos.find(v => v.id === id)) return;
+
+    const newVideo = { id, url };
+    const newCards = generateFlashcards(id);
+
+    setVideos([...videos, newVideo]);
+    setCards([...cards, ...newCards]);
+
+    setUrl("");
+  }
+
+  // ===============================
+  // Spaced repetition update
+  // ===============================
+  function gradeCard(card, correct) {
+    let newBox = card.box;
+
+    if (correct) {
+      newBox = Math.min(card.box + 1, 5);
+    } else {
+      newBox = 1;
+    }
+
+    const delay = [0, 1, 5, 10, 24, 72]; // hours
+
+    return {
+      ...card,
+      box: newBox,
+      nextReview: Date.now() + delay[newBox] * 3600000
+    };
+  }
+
+  // ===============================
+  // Quiz system
+  // ===============================
+  function startQuiz() {
+    setMode("quiz");
+    setIndex(0);
+    setScore(0);
+    setQuizTotal(cards.length);
+  }
+
+  function answer(correct) {
+    const updated = [...cards];
+    updated[index] = gradeCard(updated[index], correct);
+    setCards(updated);
+
+    if (correct) setScore(score + 1);
+
+    setIndex((i) => (i + 1) % cards.length);
+    setShowAnswer(false);
+  }
+
+  const currentCard = cards[index];
+
+  // ===============================
+  // UI
+  // ===============================
+  return (
+    <div style={{ fontFamily: "Arial", padding: 20, maxWidth: 900, margin: "auto" }}>
+      <h1>📚 Smart Study Flashcards</h1>
+
+      {/* Navigation */}
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => setMode("study")}>Study</button>
+        <button onClick={() => setMode("add")}>Add Videos</button>
+        <button onClick={startQuiz}>Quiz Mode</button>
+      </div>
+
+      {/* ADD MODE */}
+      {mode === "add" && (
+        <div>
+          <input
+            style={{ width: "70%", padding: 10 }}
+            placeholder="Paste YouTube link..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+          <button onClick={addVideo} style={{ marginLeft: 10 }}>
+            Add
+          </button>
+        </div>
+      )}
+
+      {/* VIDEOS */}
+      <h2>Videos</h2>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {videos.map((v) => (
+          <iframe
+            key={v.id}
+            width="250"
+            height="140"
+            src={`https://www.youtube.com/embed/${v.id}`}
+            allowFullScreen
+          />
+        ))}
+      </div>
+
+      <hr />
+
+      {/* STUDY MODE */}
+      {mode === "study" && currentCard && (
+        <div>
+          <h2>Flashcards</h2>
+          <div style={{ border: "1px solid #ccc", padding: 20 }}>
+            <h3>{currentCard.q}</h3>
+            {showAnswer && <p>{currentCard.a}</p>}
+          </div>
+
+          <button onClick={() => setShowAnswer(!showAnswer)}>
+            {showAnswer ? "Hide" : "Show"}
+          </button>
+
+          <button onClick={() => setIndex((index + 1) % cards.length)}>
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* QUIZ MODE */}
+      {mode === "quiz" && currentCard && (
+        <div>
+          <h2>Quiz Mode</h2>
+          <h3>{currentCard.q}</h3>
+
+          {showAnswer && <p>{currentCard.a}</p>}
+
+          <button onClick={() => setShowAnswer(!showAnswer)}>
+            Reveal Answer
+          </button>
+
+          <div style={{ marginTop: 10 }}>
+            <button onClick={() => answer(true)}>Correct</button>
+            <button onClick={() => answer(false)}>Wrong</button>
+          </div>
+
+          <p>
+            Score: {score}/{quizTotal}
+          </p>
+        </div>
+      )}
+
+      {cards.length === 0 && <p>No flashcards yet. Add a video to begin.</p>}
+    </div>
+  );
+}
